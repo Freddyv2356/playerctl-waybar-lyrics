@@ -1,5 +1,5 @@
 # playerctl-waybar-lyrics
-Basic ``.sh`` script that help you display lyrics fetching from lrclib and displaying on waybar (mostly used on youtube for KR,JP,CN songs) currently still testing and debugging the hell out of it. 
+Basic ``.sh`` script that help you display lyrics fetching from lrclib and displaying on waybar (mostly used on youtube for KR,JP,CN songs) currently still testing and debugging the hell out of it [Expect that it will be a bit delay on displaying lyrics compare to the orignal player]. 
 
 Required `mpris` or `playerctl` to read the player status (I forgot which one is used to read the player status.)
 
