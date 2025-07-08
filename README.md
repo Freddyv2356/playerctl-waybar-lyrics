@@ -25,7 +25,7 @@ And also copy this as the module:
 ```
 After setup successfully on your waybar and it display `No song playing` then you're good to go I guess.
 
-### HOW TO USE
+## HOW TO USE
 ``Status: No song playing``
 
 ![image](https://github.com/user-attachments/assets/3b6a938c-cd93-4987-9276-f5d639f41df1)
