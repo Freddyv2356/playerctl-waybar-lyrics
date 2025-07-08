@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# Crappily coded by Freddyv2356 / KuronSub
 # HOW TO USE:
 # 1. Add this script into your waybar, as an executable script obviously. (If you don't know how to do: sudo chmod +x lyric_bars.sh)
 # 2. Next up is add in this as your module for the script. (Make sure to change username back to your actual directory name.)
@@ -20,6 +21,7 @@
 # 4. Profit.
 # EXTRA NOTE: You can change the lcr file that it generated so that you can add in your own lyrics or use lrcget and upload your own version of the subtitle you want [of course it has to be in lrc type not vtt or srt, at least you will have to convert it.]
 # Also feel free to edit and improve my code whatever you want. Since It's just a crappy code I slapped together to just read subtitle whenever I don't watch youtube video directly anyway,
+
 
 # Configuration
 CACHE_DIR="/home/$USER/Documents/lrclib_lyrics" # Your directory to save config and lyrics file.
