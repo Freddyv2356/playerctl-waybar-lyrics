@@ -68,4 +68,4 @@ Extra info: You can also edit the style.css file to customize the display.
 ```
 
 ## DEBUGGING
-You can run ``bash -x "lyric_bar.sh middle" > debug.txt 2>&1`` so that it will output the debug value or just read the outputted error.log in the folder to read the log that it write.
+You can run ``bash -x "./lyric_bar.sh middle" > debug.txt 2>&1`` so that it will output the debug value or just read the outputted error.log in the folder to read the log that it write.
