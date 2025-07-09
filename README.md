@@ -46,7 +46,7 @@ LEFT CLICK = Go down by 1
 
 ``Status: No song title available``
 
-Then I guess is probably one or two thing that is the search function of this script are not good enough to find it or it doesn't exist in the lrclib database so you can go add that in using ``LRCGET``.
+Then I guess is probably one or two thing that is the search function of this script are not good enough to find it or it doesn't exist in the lrclib database so you can go add that in using ``LRCGET``(https://github.com/tranxuanthang/lrcget).
 
 Extra info: You can also edit the style.css file to customize the display.
 
@@ -67,3 +67,5 @@ Extra info: You can also edit the style.css file to customize the display.
     }
 ```
 
+## DEBUGGING
+You can run ``bash -x "lyric_bar.sh middle" > debug.txt 2>&1`` so that it will output the debug value or just read the outputted error.log in the folder to read the log that it write.
