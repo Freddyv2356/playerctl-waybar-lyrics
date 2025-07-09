@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+# Crappily coded by Freddyv2356 / KuronSub
 # Configuration
 CACHE_DIR="/home/$USER/Documents/lrclib_lyrics"
 mkdir -p "$CACHE_DIR"
