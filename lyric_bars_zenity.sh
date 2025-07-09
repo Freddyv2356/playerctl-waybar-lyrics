@@ -9,12 +9,10 @@ OPTIONS_FILE="$CACHE_DIR/.options"
 ERROR_LOG="$CACHE_DIR/error.log"
 API_RESPONSE_LOG="$CACHE_DIR/api_response.json"
 CURRENT_SONG_FILE="$CACHE_DIR/current_song.txt"
-SELECTION_TIMEOUT=25
+SELECTION_TIMEOUT=15
 LAST_FETCH_FILE="$CACHE_DIR/.last_fetch"
-LAST_CLICK_FILE="$CACHE_DIR/.last_click"
-CLICK_DEBOUNCE=1
 SELECTION_CONFIRMED_FILE="$CACHE_DIR/.selection_confirmed"
-MAX_CACHE_AGE=inf  # Maximum age of cache file in hours, set to "inf" to never re-download and 0 is download everytime it load (which is not recommended.)
+MAX_CACHE_AGE=inf  # Maximum time of cache file in hours, set to "inf" to never re-download
 
 # Ensure UTF-8 encoding
 export LC_ALL=en_US.UTF-8
@@ -159,7 +157,7 @@ fetch_lyrics() {
     options_count=$(jq -r '.[] | select(.syncedLyrics != null) | .name' "$API_RESPONSE_LOG" 2>>"$ERROR_LOG" | wc -l)
     if [ "$options_count" -eq 0 ]; then
         log "No synced lyrics found for title: $title or its parts"
-        echo "No synced lyrics found" > "$cache_file"
+        echo "♫" > "$cache_file"
         rm -f "$temp_response"
         return 1
     fi
@@ -193,75 +191,42 @@ save_lyrics_to_file() {
         return 0
     fi
     log "No synced lyrics available for index=$selected_index"
-    echo "No synced lyrics found" > "$cache_file"
+    echo "♫" > "$cache_file"
     return 1
 }
 
-# Handle click
-handle_click() {
-    local click_type="$1"
-    local options_count="$2"
-    local current_index=$(cat "$SELECTED_INDEX_FILE" 2>/dev/null || echo "0")
-    local current_time=$(date +%s)
-    local last_click=$(cat "$LAST_CLICK_FILE" 2>/dev/null || echo "0")
+# Handle selection with Zenity
+handle_selection() {
+    local options_count="$1"
+    local cache_file="$2"
+    local current_index
+    current_index=$(cat "$SELECTED_INDEX_FILE" 2>/dev/null || echo "0")
 
-    if [[ $options_count -eq 1 ]]; then
-        log "Only one option, skipping selection"
-        echo "0" > "$SELECTED_INDEX_FILE"
+    if ! command -v zenity >/dev/null; then
+        log "Zenity not found, defaulting to index=$current_index"
+        echo "$current_index" > "$SELECTED_INDEX_FILE"
         touch "$SELECTION_CONFIRMED_FILE"
-        log "Selection confirmed: index=0"
+        save_lyrics_to_file "$current_index" "$cache_file"
         return 0
     fi
 
-    if [[ $((current_time - last_click)) -lt $CLICK_DEBOUNCE ]]; then
-        log "Click debounced, ignoring"
-        return 0
+    # Use zenity for GUI selection
+    local selected_option
+    selected_option=$(cat "$OPTIONS_FILE" | zenity --list --title="Select Lyrics" --column="Song" --timeout="$SELECTION_TIMEOUT" --width=500 --height=400 2>>"$ERROR_LOG")
+    if [ -z "$selected_option" ]; then
+        log "Selection timed out after $SELECTION_TIMEOUT seconds, using default index=$current_index"
+        selected_index="$current_index"
+    else
+        selected_index=$(grep -n "^$selected_option$" "$OPTIONS_FILE" | cut -d: -f1)
+        selected_index=$((selected_index - 1))
+        log "User selected index=$selected_index"
     fi
 
-    echo "$current_time" > "$LAST_CLICK_FILE"
-    log "Click detected: type=$click_type, current_index=$current_index, options_count=$options_count"
-
-    case "$click_type" in
-        middle)
-            # Display options to user
-            local selected_index
-            if command -v zenity >/dev/null; then
-                # Use zenity for GUI selection
-                selected_index=$(cat "$OPTIONS_FILE" | zenity --list --title="Select Lyrics" --column="Song" --timeout="$SELECTION_TIMEOUT" --width=500 --height=400 2>/dev/null | grep -n . "$OPTIONS_FILE" | cut -d: -f1)
-                if [[ -z "$selected_index" ]]; then
-                    log "Selection timed out after $SELECTION_TIMEOUT seconds, using default index=$current_index"
-                    selected_index=$current_index
-                else
-                    selected_index=$((selected_index - 1)) # Adjust for 0-based indexing
-                    log "User selected index=$selected_index"
-                fi
-            else
-                # Fallback to terminal-based select
-                log "Zenity not found, using terminal selection"
-                echo "Select a lyric option (timeout in $SELECTION_TIMEOUT seconds):"
-                PS3="Enter choice: "
-                select opt in $(cat "$OPTIONS_FILE"); do
-                    if [[ -n "$opt" ]]; then
-                        selected_index=$(grep -n "^$opt$" "$OPTIONS_FILE" | cut -d: -f1)
-                        selected_index=$((selected_index - 1))
-                        log "User selected index=$selected_index"
-                        break
-                    fi
-                    log "Selection timed out or invalid, using default index=$current_index"
-                    selected_index=$current_index
-                    break
-                done < <(timeout "$SELECTION_TIMEOUT" bash -c "cat '$OPTIONS_FILE'")
-            fi
-
-            echo "$selected_index" > "$SELECTED_INDEX_FILE"
-            touch "$SELECTION_CONFIRMED_FILE"
-            log "Selection confirmed: index=$selected_index"
-            ;;
-        *)
-            log "Unknown click type: $click_type"
-            return 1
-            ;;
-    esac
+    echo "$selected_index" > "$SELECTED_INDEX_FILE"
+    touch "$SELECTION_CONFIRMED_FILE"
+    save_lyrics_to_file "$selected_index" "$cache_file"
+    log "Selection confirmed: index=$selected_index"
+    return 0
 }
 
 # Get current lyric line
@@ -312,7 +277,7 @@ get_current_lyric() {
     log "Checking synced lyrics for index=$selected_index: ${synced_lyrics:0:50}..."
     if [ "$synced_lyrics" = "null" ] || [ -z "$synced_lyrics" ]; then
         log "No synced lyrics available for index=$selected_index"
-        echo "No synced lyrics found"
+        echo "♫"
         return
     fi
     local line
@@ -388,7 +353,7 @@ main() {
     log "Options count: $options_count"
 
     if [ "$options_count" -eq 0 ]; then
-        echo "No synced lyrics found"
+        echo "♫"
         exit 0
     elif [ "$options_count" -eq 1 ]; then
         echo "0" > "$SELECTED_INDEX_FILE"
@@ -403,22 +368,9 @@ main() {
         fi
     fi
 
-    local click_type="$1"
-    if [ -n "$click_type" ]; then
-        handle_click "$click_type" "$options_count"
-        exit 0
-    fi
-
     if [ "$options_count" -gt 1 ] && [ ! -f "$SELECTION_CONFIRMED_FILE" ]; then
-        local selected_index
-        selected_index=$(cat "$SELECTED_INDEX_FILE" 2>/dev/null || echo "0")
-        local last_modified
-        last_modified=$(stat -c %Y "$SELECTED_INDEX_FILE" 2>/dev/null || echo "0")
-        if [ $((current_time - last_modified)) -gt $SELECTION_TIMEOUT ]; then
-            log "Selection timed out, auto-confirming index $selected_index"
-            touch "$SELECTION_CONFIRMED_FILE"
-            save_lyrics_to_file "$selected_index" "$cache_file"
-        fi
+        handle_selection "$options_count" "$cache_file"
+        # After selection, display the selected title and exit to avoid premature lyric display
         echo "$(get_selected_title)"
         exit 0
     fi
