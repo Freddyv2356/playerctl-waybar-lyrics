@@ -69,3 +69,4 @@ Extra info: You can also edit the style.css file to customize the display.
 
 ## DEBUGGING
 You can run ``bash -x ./lyric_bar.sh middle > debug.txt 2>&1`` so that it will output the debug value or just read the outputted error.log in the folder to read the log that it write.
+You can also check the cached lyric folder to add the lyric by yourself using correct .lrc type basically ``[00:00:00] Bruh`` which the number in [] is the timestamp to read from the file and sync it with playerctl status.
