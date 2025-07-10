@@ -8,7 +8,7 @@ You are free to use this script and modify or upgrade it as much as you want. As
 Download the .sh file and set it as executable. (sudo chmod +x lyric_bars.sh)
 
 And also copy this as the module:
-```
+```bash
 "modules-right": ["custom/lyrics"], // Feel free to edit this as modules-left, right or center to your liking.
 "custom/lyrics": {
         "exec": "/home/username/.config/waybar/lyric_bars.sh", // Remember to change the directory to your.
@@ -50,7 +50,7 @@ Then I guess is probably one or two thing that is the search function of this sc
 
 Extra info: You can also edit the style.css file to customize the display.
 
-```
+```css
 #custom-lyrics {
     color: #ffffff;
     font-family: "Noto Sans CJK JP", sans-serif;
