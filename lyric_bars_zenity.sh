@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Crappily coded by Freddyv2356 / KuronSub
+#Crappily coded by Freddyv2356 / KuronSub
 # Configuration
 CACHE_DIR="/home/$USER/Documents/lrclib_lyrics"
 mkdir -p "$CACHE_DIR"
@@ -12,7 +12,9 @@ CURRENT_SONG_FILE="$CACHE_DIR/current_song.txt"
 SELECTION_TIMEOUT=15
 LAST_FETCH_FILE="$CACHE_DIR/.last_fetch"
 SELECTION_CONFIRMED_FILE="$CACHE_DIR/.selection_confirmed"
-MAX_CACHE_AGE=inf  # Maximum time of cache file in hours, set to "inf" to never re-download
+MAX_CACHE_AGE=inf  # Maximum age of cache file in hours, set to "inf" to never re-download
+ERROR_LOG_SIZE=20  # Maximum size of error.log in MB
+ERROR_LOG_SIZE_BYTES=$((ERROR_LOG_SIZE * 1000000))  # Convert MB to bytes
 
 # Ensure UTF-8 encoding
 export LC_ALL=en_US.UTF-8
@@ -23,10 +25,25 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" >> "$ERROR_LOG"
 }
 
+# Check and manage error.log size
+check_log_size() {
+    if [ -f "$ERROR_LOG" ]; then
+        local log_size
+        log_size=$(stat -c %s "$ERROR_LOG" 2>/dev/null || echo 0)
+        if [ "$log_size" -gt "$ERROR_LOG_SIZE_BYTES" ]; then
+            rm -f "$ERROR_LOG"
+            touch "$ERROR_LOG"
+            echo "$(date '+%Y-%m-%d %H:%M:%S'): Error log exceeded ${ERROR_LOG_SIZE}MB, deleted and recreated" >> "$ERROR_LOG"
+        fi
+    else
+        touch "$ERROR_LOG"
+    fi
+}
+
 # Clean title function
 clean_title() {
     local title="$1"
-    title=$(echo "$title" | sed -E 's/\([^)]*\)//g; s/\[[^]]*\]//g; s/【[^】]*】//g; s/ (MV|VIDEO|OFFICIAL|feat\.?|ft\.?|MUSIC)//ig; s/[[:space:]]*$//')
+    title=$(echo "$title" | sed -E 's/\([^)]*\)//g; s/\[[^]]*\]//g; s/【[^】]*】//g; s/ (MV|VIDEO|OFFICIAL|feat\.?|ft\.?|MUSIC|Voice|Vo\.?)//ig; s/[[:space:]]*$//')
     echo "$title"
 }
 
@@ -157,7 +174,7 @@ fetch_lyrics() {
     options_count=$(jq -r '.[] | select(.syncedLyrics != null) | .name' "$API_RESPONSE_LOG" 2>>"$ERROR_LOG" | wc -l)
     if [ "$options_count" -eq 0 ]; then
         log "No synced lyrics found for title: $title or its parts"
-        echo "♫" > "$cache_file"
+        echo "No synced lyrics found" > "$cache_file"
         rm -f "$temp_response"
         return 1
     fi
@@ -191,7 +208,7 @@ save_lyrics_to_file() {
         return 0
     fi
     log "No synced lyrics available for index=$selected_index"
-    echo "♫" > "$cache_file"
+    echo "No synced lyrics found" > "$cache_file"
     return 1
 }
 
@@ -277,7 +294,7 @@ get_current_lyric() {
     log "Checking synced lyrics for index=$selected_index: ${synced_lyrics:0:50}..."
     if [ "$synced_lyrics" = "null" ] || [ -z "$synced_lyrics" ]; then
         log "No synced lyrics available for index=$selected_index"
-        echo "♫"
+        echo "No synced lyrics found"
         return
     fi
     local line
@@ -306,6 +323,9 @@ get_current_lyric() {
 
 # Main logic
 main() {
+    # Check log file size before proceeding
+    check_log_size
+
     local player_status
     player_status=$(playerctl status 2>/dev/null || echo "Stopped")
     if [ "$player_status" != "Playing" ]; then
@@ -353,7 +373,7 @@ main() {
     log "Options count: $options_count"
 
     if [ "$options_count" -eq 0 ]; then
-        echo "♫"
+        echo "No synced lyrics found"
         exit 0
     elif [ "$options_count" -eq 1 ]; then
         echo "0" > "$SELECTED_INDEX_FILE"
