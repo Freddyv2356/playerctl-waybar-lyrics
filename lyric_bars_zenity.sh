@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
-#Crappily coded by Freddyv2356 / KuronSub
+# Crappily coded by Freddyv2356 / KuronSub
 # Configuration
-CACHE_DIR="/home/$USER/Documents/lrclib_lyrics"
-mkdir -p "$CACHE_DIR"
-OFFSET=0.85
-SELECTED_INDEX_FILE="$CACHE_DIR/.selected_index"
-OPTIONS_FILE="$CACHE_DIR/.options"
-ERROR_LOG="$CACHE_DIR/error.log"
-API_RESPONSE_LOG="$CACHE_DIR/api_response.json"
-CURRENT_SONG_FILE="$CACHE_DIR/current_song.txt"
-SELECTION_TIMEOUT=15
-LAST_FETCH_FILE="$CACHE_DIR/.last_fetch"
-SELECTION_CONFIRMED_FILE="$CACHE_DIR/.selection_confirmed"
+CACHE_DIR="/home/$USER/Documents/lrclib_lyrics" # Your directory for storing info (You can change to whatever you want)
+mkdir -p "$CACHE_DIR" # Make directory if it doesn't exist.
+OFFSET=0.85 # Early offset for the script as the default execution interval is 1 sec.
+SELECTED_INDEX_FILE="$CACHE_DIR/.selected_index" # Store your selection to get the lyric file.
+OPTIONS_FILE="$CACHE_DIR/.options" # Setting file directory
+ERROR_LOG="$CACHE_DIR/error.log" # Logging/Debugging directory
+API_RESPONSE_LOG="$CACHE_DIR/api_response.json" # API Stuff with LRCLIB
+CURRENT_SONG_FILE="$CACHE_DIR/current_song.txt" # Getting the title for the current song playing on your playerctl.
+SELECTION_TIMEOUT=15 #Time it took before the script automatically choose (Usually the first result that it show will be the chosen one.)
+LAST_FETCH_FILE="$CACHE_DIR/.last_fetch" #More caching out
+SELECTION_CONFIRMED_FILE="$CACHE_DIR/.selection_confirmed" # Confirm your selection
 MAX_CACHE_AGE=inf  # Maximum age of cache file in hours, set to "inf" to never re-download
 ERROR_LOG_SIZE=20  # Maximum size of error.log in MB
 ERROR_LOG_SIZE_BYTES=$((ERROR_LOG_SIZE * 1000000))  # Convert MB to bytes
+STATE_FILE="$CACHE_DIR/.script_state"  # File to store enabled/disabled state
+ENABLED_STATE=$(cat "$STATE_FILE" 2>/dev/null || echo "enabled")  # Load state, default to enabled
 
 # Ensure UTF-8 encoding
 export LC_ALL=en_US.UTF-8
@@ -43,7 +45,7 @@ check_log_size() {
 # Clean title function
 clean_title() {
     local title="$1"
-    title=$(echo "$title" | sed -E 's/\([^)]*\)//g; s/\[[^]]*\]//g; s/【[^】]*】//g; s/ (MV|VIDEO|OFFICIAL|feat\.?|ft\.?|MUSIC|Voice|Vo\.?)//ig; s/[[:space:]]*$//')
+    title=$(echo "$title" | sed -E 's/\([^)]*\)//g; s/\[[^]]*\]//g; s/【[^】]*】//g; s/ (MV|VIDEO|OFFICIAL|feat\.?|ft\.?|MUSIC)//ig; s/[[:space:]]*$//')
     echo "$title"
 }
 
@@ -212,6 +214,29 @@ save_lyrics_to_file() {
     return 1
 }
 
+# Handle click events
+handle_click() {
+    local click_type="$1"
+    case "$click_type" in
+        left|right)
+            if [ "$ENABLED_STATE" = "enabled" ]; then
+                echo "disabled" > "$STATE_FILE"
+                log "Script disabled via $click_type click"
+                echo "Stopped"
+            else
+                echo "enabled" > "$STATE_FILE"
+                log "Script enabled via $click_type click"
+                echo "Enabled"
+            fi
+            exit 0
+            ;;
+        *)
+            log "Unknown click type: $click_type"
+            return 1
+            ;;
+    esac
+}
+
 # Handle selection with Zenity
 handle_selection() {
     local options_count="$1"
@@ -325,6 +350,26 @@ get_current_lyric() {
 main() {
     # Check log file size before proceeding
     check_log_size
+
+    # Handle click events
+    local click_type="$1"
+    if [ -n "$click_type" ]; then
+        case "$click_type" in
+            left|right)
+                handle_click "$click_type"
+                ;;
+            *)
+                log "Ignoring unknown click type: $click_type"
+                ;;
+        esac
+    fi
+
+    # Check if script is disabled
+    if [ "$ENABLED_STATE" = "disabled" ]; then
+        log "Script is disabled, exiting"
+        echo "Stopped"
+        exit 0
+    fi
 
     local player_status
     player_status=$(playerctl status 2>/dev/null || echo "Stopped")
