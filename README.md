@@ -4,6 +4,17 @@ Basic ``.sh`` script that help you display lyrics fetching from lrclib and displ
 Required `mpris` or `playerctl` to read the player status (I forgot which one is used to read the player status.)
 
 You are free to use this script and modify or upgrade it as much as you want. As my script is not much valueable or anything just please keep my name in the file is okay.
+
+## Dependencies
+```
+playerctl mpris jq zenity
+```
+For Debian/Ubuntu: ``sudo apt install jq playerctl mpris zenity``
+
+For Arch: ``sudo pacman -Sy playectl mpris zenity jq``
+
+Note: ``zenity`` is required for the script that use zenity to display only.
+
 ## HOW TO INSTALL
 Download the .sh file and set it as executable. (sudo chmod +x lyric_bars.sh)
 
